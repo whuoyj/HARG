@@ -619,9 +619,9 @@ def write_adjacent(adjacent_path, fps_file, dataset_level_file, object_level_pat
     if not os.path.exists(adjacent_path):
         os.mkdir(adjacent_path)
 
-    write_spa_adjacent(os.path.join(adjacent_path, 'spa_adj'), fps_file, dataset_level_file, dst_frame_path, object_level_path)
-    write_tem_adjacent(os.path.join(adjacent_path, 'tem_adj'), dataset_level_file, object_level_path)
-    write_rel_adjacent(os.path.join(adjacent_path, 'rel_adj'), dataset_level_file, relation_level_path)
+    write_spa_adjacent(os.path.join(adjacent_path, 'spa_adj/'), fps_file, dataset_level_file, dst_frame_path, object_level_path)
+    write_tem_adjacent(os.path.join(adjacent_path, 'tem_adj/'), dataset_level_file, object_level_path)
+    write_rel_adjacent(os.path.join(adjacent_path, 'rel_adj/'), dataset_level_file, relation_level_path)
 
 def write_spa_adjacent(adjacent_path, fps_file, dataset_level_file, dst_frame_path, object_level_path):
 
@@ -700,7 +700,7 @@ def write_spa_adjacent(adjacent_path, fps_file, dataset_level_file, dst_frame_pa
                                             single_spa_adj[sj][si] = sing_oinv[si] * sing_oinv[sj]
 
             all_spa_adj[i * (NA + NO):(i + 1) * (NA + NO), i * (NA + NO):(i + 1) * (NA + NO)] = single_spa_adj
-        np.save(adjacent_path + '/' + os.path.splitext(vname)[0] + '.npy', all_spa_adj)
+        np.save(adjacent_path + os.path.splitext(vname)[0] + '.npy', all_spa_adj)
 
 def write_tem_adjacent(adjacent_path, dataset_level_file, object_level_path):
 
@@ -723,7 +723,7 @@ def write_tem_adjacent(adjacent_path, dataset_level_file, object_level_path):
                     if abs(si - sj) < 15:
                         single_spa_adj[si][sj] = sing_oinv[si] * sing_oinv[sj]
             all_spa_adj[i * NT:(i + 1) * NT, i * NT:(i + 1) * NT] = single_spa_adj
-        np.save(adjacent_path + '/' + os.path.splitext(vname)[0] + '.npy', all_spa_adj)
+        np.save(adjacent_path + os.path.splitext(vname)[0] + '.npy', all_spa_adj)
 
 
 def write_rel_adjacent(adjacent_path, dataset_level_file, relation_level_path):
@@ -744,7 +744,161 @@ def write_rel_adjacent(adjacent_path, dataset_level_file, relation_level_path):
             sing_rinv = relation_in_video[i]
             for si in range(NT):
                 for sj in range(NT):
-                    if abs(si - sj) < 7:
+                    if abs(si - sj) < 15:
                         single_rel_adj[si][sj] = sing_rinv[si] * sing_rinv[sj]
             all_rel_adj[i * NT:(i + 1) * NT, i * NT:(i + 1) * NT] = single_rel_adj
-        np.save(adjacent_path + '/' + os.path.splitext(vname)[0] + '.npy', all_rel_adj)
+        np.save(adjacent_path + os.path.splitext(vname)[0] + '.npy', all_rel_adj)
+
+def write_relation_semantic_1(semantic_file, split_file, fps_file, dst_frame_path):
+
+    GROUP_relationships = {
+        'above': 1,
+        'behind': 1,
+        'beneath': 1,
+        'carrying': 0,
+        'carrying on back': 0,
+        'covered by': 0,
+        'drinking from': 0,
+        'holding': 0,
+        'in': 1,
+        'in contact': 2,
+        'in front of': 1,
+        'leaning on': 0,
+        'looking at': 3,
+        'lying on': 0,
+        'not contacting': 4,
+        'on the side of': 1,
+        'pressing': 0,
+        'sitting on': 0,
+        'standing on': 0,
+        'talking to': 0,
+        'wearing': 0,
+        'wiping': 0,
+        'writing on': 0}
+
+    split = read_split(split_file)
+    fps = read_fps(fps_file)
+    aa_labels = load_aa('./MOMA_anns/aact_cnames.txt')
+
+    graph_anns = load_json('./MOMA_anns/graph_anns.json')
+
+    relationships = {}
+    relationships_num = {}
+    atomic_actions = {}
+    actors = {}
+    objects = {}
+    wframes = {}
+    f_actors = {}
+    f_objects = {}
+    f_actors_bbox = {}
+    f_objects_bbox = {}
+
+    for g in graph_anns:
+        vname = g['trim_video_id']
+
+        if vname in split:
+            frames = sorted(os.listdir('/home/ouyangjun/workspace/MOMA/MOMA-1.0/all_frames/' + vname))
+            if vname not in atomic_actions:
+                atomic_actions[vname] = []
+                actors[vname] = {}
+                objects[vname] = {}
+                wframes[vname] = []
+                f_actors[vname] = {}
+                f_objects[vname] = {}
+                f_actors_bbox[vname] = {}
+                f_objects_bbox[vname] = {}
+                relationships[vname] = {}
+                relationships_num[vname] = {}
+
+            tfps = float(fps[vname])
+            if tfps > 30:
+                tfps = 30
+            frame_num = int(g['frame_timestamp'] * tfps + 0.5)
+            if frame_num >= len(frames):
+                frame_num = len(frames) - 1
+
+            fname = frames[frame_num]
+            wframes[vname].append(fname)
+
+            trels = g['annotation']['relationships']
+            relationships[vname][fname] = {}
+            relationships_num[vname][fname] = {}
+            for trel in trels:
+                tas = trel['description'][1:-1].split('),(')[0].split(',')
+                tos = trel['description'][1:-1].split('),(')[1].split(',')
+                for ta in tas:
+                    if ta not in relationships[vname][fname]:
+                        relationships[vname][fname][ta] = {}
+                        relationships_num[vname][fname][ta] = {}
+                    for to in tos:
+                        if to not in relationships[vname][fname][ta]:
+                            relationships[vname][fname][ta][to] = []
+                            relationships_num[vname][fname][ta][to] = []
+                        relationships[vname][fname][ta][to].append(trel['class'].split(' (')[0])
+                        relationships_num[vname][fname][ta][to].append(
+                            GROUP_relationships[trel['class'].split(' (')[0]])
+
+            taas = g['annotation']['atomic_actions']
+            for taa in taas:
+                if aa_labels[taa['class']] not in atomic_actions[vname]:
+                    atomic_actions[vname].append(aa_labels[taa['class']])
+
+            tacts = g['annotation']['actors']
+            tact_label = []
+            f_actors_bbox[vname][fname] = {}
+            for tact in tacts:
+                if tact['id_in_video'] not in actors[vname]:
+                    actors[vname][tact['id_in_video']] = tact['class']
+                tact_label.append(tact['id_in_video'])
+                f_actors_bbox[vname][fname][tact['id_in_video']] = tact['bbox']
+            tact_label = sorted(tact_label)
+            f_actors[vname][fname] = tact_label
+
+            tobjs = g['annotation']['objects']
+            tobj_label = []
+            f_objects_bbox[vname][fname] = {}
+            for tobj in tobjs:
+                if tobj['id_in_video'] not in objects[vname]:
+                    objects[vname][tobj['id_in_video']] = tobj['class']
+                tobj_label.append(tobj['id_in_video'])
+                f_objects_bbox[vname][fname][tobj['id_in_video']] = tobj['bbox']
+            tobj_label = sorted(tobj_label)
+            f_objects[vname][fname] = tobj_label
+
+    num1 = 0
+    num2 = 0
+    for vname in relationships:
+        for fname in relationships[vname]:
+            for ta in relationships[vname][fname]:
+                for to in relationships[vname][fname][ta]:
+
+                    if len(relationships[vname][fname][ta][to]) > 1:
+                        num2 = num2 + 1
+                    else:
+                        num1 = num1 + 1
+
+    with open(semantic_file, 'a+') as out:
+
+        for vname in split:
+            NA = len(actors[vname])
+            NO = len(objects[vname])
+            NT = len(wframes[vname])
+
+            out.write(vname)
+            for i in range(NA):
+                for j in range(NO):
+                    for k in range(NT):
+                        out.write(',')
+                        ta = sorted(actors[vname])[i]
+                        to = sorted(objects[vname])[j]
+                        tf = sorted(wframes[vname])[k]
+
+                        if tf in relationships[vname]:
+                            if ta in relationships[vname][tf]:
+                                if to in relationships[vname][tf][ta]:
+                                    trel_num = relationships_num[vname][tf][ta][to]
+                                    min_trel_num = trel_num.index(min(trel_num))
+                                    out.write('_'.join(relationships[vname][tf][ta][to][min_trel_num].split(' ')))
+
+            out.write('\n')
+

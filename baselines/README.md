@@ -18,6 +18,10 @@ The [MAR](https://github.com/alibaba-mmai-research/Masked-Action-Recognition) me
 
 The requirements for the MAR method are directly based on the original code. You can refer to the original [MAR](https://github.com/alibaba-mmai-research/Masked-Action-Recognition) repository for installation instructions and dependencies.
 
-## Acknowledgments
+## OR2G
 
-We sincerely appreciate the work and the accompanying code of [VideoMAEv2](https://github.com/open-mmlab/mmaction2), [AMS-Net](https://github.com/open-mmlab/mmaction2), [MAR](https://github.com/alibaba-mmai-research/Masked-Action-Recognition), and the [MMAction2](https://github.com/open-mmlab/mmaction2) framework toolbox. We are grateful for the hard research work and dedication of the authors.
+We provide the implementation of the OR2G method for the MOMA dataset and the MOMA-LRG dataset.
+
+### Requirements
+
+The requirements for the OR2G method are same with HARG.

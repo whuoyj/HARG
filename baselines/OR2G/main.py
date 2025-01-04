@@ -203,7 +203,7 @@ if __name__ == '__main__':
     seed_torch()
     device = torch.device(config['cuda'] if torch.cuda.is_available() else 'cpu')
 
-    model = GGCN_relation(visual_dim=config['visual_dim'],
+    model = OR2G(visual_dim=config['visual_dim'],
                           relation_dim=config['num_class3'],
                           feat_dim=config['feat_dims'], num_v=config['num_nodes'],
                           dropout=config['dropout_rate'])
